@@ -129,9 +129,13 @@ if CLIENT then
 	SWEP.EffectParameters = {}
 	SWEP.ViewModelFOV = 54
 
+	local function ScreenScaleHClamped(v)
+		return v * (math.min(ScrH(), 1080) / 480)
+	end
+
 	surface.CreateFont("LambdaPhyscannonFont", {
 		font = "HalfLife2",
-		size = ScreenScaleH(64),
+		size = ScreenScaleHClamped(70),
 		weight = 0,
 		blursize = 0,
 		scanlines = 0,
@@ -141,7 +145,7 @@ if CLIENT then
 
 	surface.CreateFont("LambdaPhyscannonFont2", {
 		font = "HalfLife2",
-		size = ScreenScaleH(64),
+		size = ScreenScaleHClamped(70),
 		weight = 0,
 		blursize = ScreenScaleH(4),
 		scanlines = 2,
@@ -3176,13 +3180,14 @@ function SWEP:DrawWeaponSelection(x, y, wide, tall, alpha)
 
 	surface.SetFont("LambdaPhyscannonFont")
 	local w, h = surface.GetTextSize("m")
+	local cx, cy = x + (wide / 2) - (w / 2), y + (tall / 2) - (h / 2)
 
-	surface.SetTextPos(x + (wide / 2) - (w / 2), y + (tall / 2) - (h / 2))
+	surface.SetTextPos(cx, cy)
 
 	surface.SetFont("LambdaPhyscannonFont2")
 	surface.DrawText("m")
 
-	surface.SetTextPos(x + (wide / 2) - (w / 2), y + (tall / 2) - (h / 2))
+	surface.SetTextPos(cx, cy)
 
 	surface.SetFont("LambdaPhyscannonFont")
 	surface.DrawText("m")
