@@ -1,0 +1,15 @@
+root = true
+
+[*]
+indent_style = tab
+insert_final_newline = true
+max_line_length = unset
+quote_style = double
+trim_trailing_whitespace = true
+
+[*.lua]
+align_continuous_assign_statement = false
+align_continuous_inline_comment = false
+space_around_table_field_list = false
+space_before_function_call_single_arg = false
+table_separator_style = comma

@@ -5,10 +5,26 @@ local function GetLogging() return function() end end
 
 local DbgPrint = GetLogging("motioncontroller")
 local abs = math.abs
+local ceil = math.ceil
+local CurTime = CurTime
+local Vector = Vector
+local IsValid = IsValid
+local _FrameTime = FrameTime
+local RealFrameTime = RealFrameTime
+local game_GetTimeScale = game.GetTimeScale
 local PREDICTION_TOLERANCE = 33
 local PREDICTION_THRESHOLD = 1
 local DEFAULT_MAX_ANGULAR = 360.0 * 10.0
 local REDUCED_CARRY_MASS = 1.0
+
+local host_timescale = GetConVar("host_timescale")
+local function FrameTime()
+	if SERVER then
+		return _FrameTime()
+	else
+		return RealFrameTime() * ceil(host_timescale:GetFloat()) * game_GetTimeScale()
+	end
+end
 
 DEFINE_BASECLASS("base_entity")
 
@@ -16,10 +32,10 @@ ENT.Base = "base_entity"
 ENT.Type = "anim"
 
 function ENT:SetupDataTables()
-	self:NetworkVar("Vector", 0, "TargetPos")
-	self:NetworkVar("Angle", 0, "TargetAng")
-	self:NetworkVar("Float", 0, "TimeToArrive")
-	self:NetworkVar("Entity", 0, "TargetObject")
+	self:NetworkVar("Vector", "TargetPos")
+	self:NetworkVar("Angle", "TargetAng")
+	self:NetworkVar("Float", "TimeToArrive")
+	self:NetworkVar("Entity", "TargetObject")
 end
 
 function ENT:ResetState()
@@ -42,11 +58,9 @@ function ENT:ResetState()
 	self.Error = -1.0
 	self.ContactAmount = 0
 	self.LoadWeight = 0
-
 end
 
 function ENT:Initialize()
-
 	DbgPrint(self, "Initialize")
 
 	self:SetTargetTransform(Vector(0, 0, 0), Angle(0, 0, 0))
@@ -56,7 +70,6 @@ function ENT:Initialize()
 	self:SetNotSolid(true)
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetNoDraw(true)
-
 end
 
 function ENT:SetTargetTransform(pos, ang)
@@ -73,7 +86,6 @@ function ENT:UpdateTransmitState()
 end
 
 function ENT:ComputeError()
-
 	if self.ErrorTime <= 0 then
 		return 0
 	end
@@ -114,11 +126,9 @@ function ENT:ComputeError()
 	self.ErrorTime = 0
 
 	return self.Error
-
 end
 
 function ENT:FindNearestChildObject(obj, pos)
-
 	local res = obj:GetPhysicsObject()
 	local bestDist = 999999
 
@@ -132,14 +142,10 @@ function ENT:FindNearestChildObject(obj, pos)
 	end
 
 	return res
-
 end
 
 function ENT:AttachObject(obj, grabPos, useGrabPos)
-
-	if IsValid(self.AttachedObject) then
-		return
-	end
+	if IsValid(self.AttachedObject) then return end
 
 	DbgPrint(self, "AttachObject", obj)
 
@@ -185,9 +191,7 @@ function ENT:AttachObject(obj, grabPos, useGrabPos)
 	local totalWeight = 0
 	for i = 0, totalCount - 1 do
 		local phys2 = obj:GetPhysicsObjectNum(i)
-		if not IsValid(phys2) then
-			continue
-		end
+		if not IsValid(phys2) then continue end
 
 		local mass = phys2:GetMass()
 		totalWeight = totalWeight + mass
@@ -213,15 +217,12 @@ function ENT:AttachObject(obj, grabPos, useGrabPos)
 	if SERVER then
 		self:SetTargetObject(obj)
 	end
-
 end
 
 function ENT:DetachObject()
-
 	DbgPrint(self, "DetachObject")
 
 	if IsValid(self.AttachedObject) then
-
 		local obj = self.AttachedObject
 
 		local phys = obj:GetPhysicsObject()
@@ -230,16 +231,14 @@ function ENT:DetachObject()
 
 			for i = 0, obj:GetPhysicsObjectCount() - 1 do
 				local physObj = obj:GetPhysicsObjectNum(i)
-				if not IsValid(physObj) then
-					continue
-				end
+				if not IsValid(physObj) then continue end
 
 				if self.SavedMass ~= nil and self.SavedMass[i] ~= nil then
 					physObj:SetMass(self.SavedMass[i])
 				end
 
 				if self.SavedRotDamping ~= nil and self.SavedRotDamping[i] ~= nil then
-					local linear,_ = physObj:GetDamping()
+					local linear, _ = physObj:GetDamping()
 					physObj:SetDamping(linear, self.SavedRotDamping[i])
 				end
 
@@ -254,8 +253,8 @@ function ENT:DetachObject()
 			self.SavedRotDamping = {}
 
 			if CLIENT and obj.cannon2_physics then
-			   obj:PhysicsDestroy()
-			   obj.cannon2_physics = nil
+				obj:PhysicsDestroy()
+				obj.cannon2_physics = nil
 			end
 		else
 			DbgPrint(self, "No valid physics: " .. tostring(phys))
@@ -271,7 +270,6 @@ function ENT:DetachObject()
 		--self:SetNW2Entity("AttachedObj", nil)
 		self:SetTargetObject(NULL)
 	end
-
 end
 
 function ENT:Think()
@@ -286,10 +284,10 @@ function ENT:Think()
 	end
 
 	if ent ~= nil then
-
 		local obj = self.AttachedObject
 		if IsValid(obj) then
 			local phys = obj:GetPhysicsObject()
+
 			if CLIENT and IsValid(phys) then
 				self:PhysicsSimulate2(phys, FrameTime())
 			end
@@ -297,13 +295,12 @@ function ENT:Think()
 	end
 
 	if SERVER then
-		self:NextThink( CurTime() )
+		self:NextThink(CurTime())
 	else
-		self:SetNextClientThink( CurTime() )
+		self:SetNextClientThink(CurTime())
 	end
 
 	return true
-
 end
 
 function ENT:ComputeNetworkError()
@@ -333,12 +330,11 @@ function ENT:ManagePredictedObject()
 end
 
 local function InContactWithHeavyObject(phys, maxMass)
-
 	local heavyContact = false
 
 	if phys.GetFrictionSnapshot ~= nil then
 		local contacts = phys:GetFrictionSnapshot()
-		for _,v in pairs(contacts) do
+		for _, v in pairs(contacts) do
 			local other = v.Other
 			if IsValid(other) and (not other:IsMoveable() or other:GetMass() > maxMass) then
 				heavyContact = true
@@ -355,17 +351,14 @@ function ENT:GetLoadWeight()
 end
 
 local function PhysComputeSlideDirection(phys, inVel, inAngVel, minMass)
-
 	local vel = Vector(inVel)
 	local angVel = Vector(inAngVel)
 
 	if phys.GetFrictionSnapshot ~= nil then
 		local contacts = phys:GetFrictionSnapshot()
-		for _,v in pairs(contacts) do
+		for _, v in pairs(contacts) do
 			local other = v.Other
-			if not IsValid(other) then
-				continue
-			end
+			if not IsValid(other) then continue end
 			if not other:IsMoveable() or other:GetMass() >= minMass then
 				local normal = v.Normal
 				angVel = normal * angVel:Dot(normal)
@@ -380,18 +373,15 @@ local function PhysComputeSlideDirection(phys, inVel, inAngVel, minMass)
 	return vel, angVel
 end
 
-function ENT:PhysicsSimulate( phys, dt )
+function ENT:PhysicsSimulate(phys, dt)
 	-- For better interpolation the client runs this in Think
 	if SERVER then
 		return self:PhysicsSimulate2(phys, dt)
 	end
 end
 
-function ENT:PhysicsSimulate2( phys, dt )
-
-	if self.AttachedObject == nil then
-		return
-	end
+function ENT:PhysicsSimulate2(phys, dt)
+	if self.AttachedObject == nil then return end
 
 	local shadowParams = self.ShadowParams
 	local timeToArrive
@@ -435,7 +425,6 @@ function ENT:PhysicsSimulate2( phys, dt )
 	self:SetTimeToArrive(timeToArrive)
 
 	return Vector(0, 0, 0), Vector(0, 0, 0), SIM_LOCAL_ACCELERATION
-
 end
 
 function ENT:IsObjectAttached()
